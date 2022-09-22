@@ -12,7 +12,8 @@ The offset is subtracted by the size of the chunk and is continued until the las
 
 - run `cargo build`
 - run `cargo run -- tx_id file_name` .
-  For Example: `cargo run -- OFJ0mBSQXy1ErQWUmQ1E5R-EBJhFCA6B_f9PhT7-Gpk document.png`
+  For Example:
+  `cargo run -- OFJ0mBSQXy1ErQWUmQ1E5R-EBJhFCA6B_f9PhT7-Gpk document.png`
   
 ## Performance
 
