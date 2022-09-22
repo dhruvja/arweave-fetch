@@ -3,9 +3,17 @@ extern crate base64;
 
 
 const DIFFERENCE: usize = 262144; // 256Kb in bytes 
+const url: &str = "https://arweave.net/";
+
+pub fn get_args(args: &[String]) -> (&str, &str) {
+    let tx_id = &args[1];
+    let file_name = &args[2];
+
+    (tx_id, file_name)
+}
 
 pub fn get_size_and_offset(tx_id: &str) -> (usize, usize) {
-    let offset_endpoint = format!("https://arweave.net/tx/{}/offset", tx_id);
+    let offset_endpoint = format!("{}tx/{}/offset",url, tx_id);
     println!("{}", offset_endpoint);
     let resp = reqwest::blocking::get(offset_endpoint).unwrap().json::<HashMap<String, String>>().unwrap();
     let size = resp.get("size").unwrap().parse::<usize>().unwrap();
@@ -14,7 +22,7 @@ pub fn get_size_and_offset(tx_id: &str) -> (usize, usize) {
 }
 
 pub fn get_first_chunk(offset: usize) -> Vec<u8> {
-    let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
+    let chunks_endpoint = format!("{}chunk/{}",url, offset);
     let resp = reqwest::blocking::get(chunks_endpoint).unwrap().json::<HashMap<String, String>>().unwrap();
 
     let chunks = &resp.get("chunk").unwrap()[..];
@@ -29,12 +37,11 @@ pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data:
 
     let mut current_calls = total_calls;
 
-    let mut start = 0;
     let mut end = 0;
 
     for id in 0..total_threads {
         let diff = current_calls/(total_threads - id);
-        start = end;
+        let start = end;
         end = start + diff;
         current_calls = current_calls - (current_calls/(total_threads - id));
         let handle = thread::spawn(move || {
@@ -64,7 +71,7 @@ pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data:
 #[tokio::main]
 pub async fn fetch_chunks(offset: usize, id: u8) -> Vec<u8> {
     println!("thread{id}: {offset}");
-    let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
+    let chunks_endpoint = format!("{}chunk/{}",url, offset);
     let resp = reqwest::get(chunks_endpoint).await.unwrap().json::<HashMap<String, String>>().await;
     let response = match resp {
         Ok(t) => t,
