@@ -17,7 +17,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // In this function, the total number of chunks are calculated and divided equally between the threads. Each thread would fetch the chunks in the specified range
     // Once the fetching is done, the data is concatenated and returned
-    let decoded_chunk_data = get_chunks(offset, total_calls, buff, THREADS);
+    let decoded_chunk_data = get_chunks(offset, total_calls,  THREADS);
+    // The length of decoded chunk data should be same as the size of the file fetch from offset endpoint 
+    println!("{}", decoded_chunk_data.len());
 
     // A new file is created if it doesnt exist
     let mut file = File::create(file_name).expect("Error encountered while creating file!");

@@ -30,9 +30,10 @@ pub fn get_first_chunk(offset: usize) -> Vec<u8> {
     buff
 }
 
-pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data: Vec<u8>, total_threads: usize) -> Vec<u8> {
+pub fn get_chunks(mut offset: usize, total_calls: usize, total_threads: usize) -> Vec<u8> {
     // Will store the information returned from different threads
     let mut handles = Vec::new();
+    let mut decoded_chunk_data = Vec::new();
 
     // This value gets decreased gradually until it reaches 0
     // This is used to split the values almost equally between all the threads
