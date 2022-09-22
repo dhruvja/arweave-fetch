@@ -6,7 +6,9 @@ version = 3
 name = "arweave-fetch"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "reqwest",
+ "round",
  "serde_json",
 ]
 
@@ -539,6 +541,12 @@ dependencies = [
  "web-sys",
  "winreg",
 ]
+
+[[package]]
+name = "round"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b02705db4fa872ae37e464fc803b7ffa574e6c4a5e112c52a82550f9dd63b657"
 
 [[package]]
 name = "ryu"
