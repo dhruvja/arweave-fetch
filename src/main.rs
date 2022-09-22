@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", offset_endpoint);
     let resp = reqwest::blocking::get(offset_endpoint)?.json::<HashMap<String, String>>()?;
     let size = resp.get("size").unwrap().parse::<usize>().unwrap();
-    let offset = resp.get("offset").unwrap().parse::<u64>().unwrap();
+    let mut offset = resp.get("offset").unwrap().parse::<usize>().unwrap();
     println!("{}", size);
 
     let mut total_chunk_data = "".to_owned();
@@ -18,11 +18,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
-        let resp = reqwest::blocking::get(chunks_endpoint)?.json::<HashMap<String, String>>()?;
-        let chunks = &resp.get("chunk").unwrap()[..];
+        let resp = reqwest::blocking::get(chunks_endpoint)?.json::<HashMap<String, String>>();
+        let response = match resp {
+            Ok(t) => t,
+            Err(err) => {
+                eprintln!("{}",err);
+                break
+            }
+        };
+        let chunks = &response.get("chunk").unwrap()[..];
         let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD)?;
 
         decoded_chunk_data = [decoded_chunk_data, buff].concat();
+
+        offset = offset - size + 1;
 
         total_chunk_data.push_str(chunks);
         println!("{}", decoded_chunk_data.len());
