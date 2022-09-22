@@ -1,4 +1,3 @@
-use serde_json::Value;
 use std::{collections::HashMap, env, fs::File, io::Write, thread};
 extern crate base64;
 
@@ -13,7 +12,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut offset = resp.get("offset").unwrap().parse::<usize>().unwrap();
     println!("{}", size);
 
-    let mut total_chunk_data = "".to_owned();
     let mut decoded_chunk_data: Vec<u8> = Vec::new();
 
     let difference = 262144;
@@ -31,18 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut decoded_chunk_data: Vec<u8> = Vec::new();
         let end = total_calls/2;
         for i in 0..end {
-            println!("thread1: {}", offset);
-            let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
-            let resp = reqwest::blocking::get(chunks_endpoint).unwrap().json::<HashMap<String, String>>();
-            let response = match resp {
-                Ok(t) => t,
-                Err(err) => {
-                    eprintln!("thread1: {}", err);
-                    continue;
-                }
-            };
-            let chunks = &response.get("chunk").unwrap()[..];
-            let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD).unwrap();
+            let buff = fetch_chunks(offset, 1);
             offset = offset - buff.len() + 1;
             decoded_chunk_data = [decoded_chunk_data, buff].concat();
         }
@@ -54,18 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let start = total_calls/2;
         offset = offset - (difference-1)*start;
         for i in start..(total_calls+1) {
-            println!("thread2: {}", offset);
-            let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
-            let resp = reqwest::blocking::get(chunks_endpoint).unwrap().json::<HashMap<String, String>>();
-            let response = match resp {
-                Ok(t) => t,
-                Err(err) => {
-                    eprintln!("thread2: {}", err);
-                    continue;
-                }
-            };
-            let chunks = &response.get("chunk").unwrap()[..];
-            let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD).unwrap();
+            let buff = fetch_chunks(offset, 2);
             offset = offset - buff.len() + 1;
             decoded_chunk_data = [decoded_chunk_data, buff].concat();
         }
@@ -84,4 +60,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Error while writing to file");
 
     Ok(())
+}
+
+#[tokio::main]
+async fn fetch_chunks(offset: usize, id: u8) -> Vec<u8> {
+    println!("thread{id}: {offset}");
+    let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
+    let resp = reqwest::get(chunks_endpoint).await.unwrap().json::<HashMap<String, String>>().await;
+    let response = match resp {
+        Ok(t) => t,
+        Err(err) => {
+            eprintln!("thread{id}: {}", err);
+            panic!();
+        }
+    };
+    let chunks = &response.get("chunk").unwrap()[..];
+    let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD).unwrap(); 
+    buff
 }
