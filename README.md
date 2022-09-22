@@ -19,4 +19,4 @@ The offset is subtracted by the size of the chunk and is continued until the las
 
 Multithreading is used to speed up the transaction by the number of threads specified.
 More the threads, the faster the data would be fetched. 
-With multithreading, parallel processing can be achieved.
+With multithreading, parallel processing is achieved.
