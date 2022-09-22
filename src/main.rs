@@ -1,5 +1,5 @@
 use serde_json::Value;
-use std::{collections::HashMap, env, fs::File, io::Write};
+use std::{collections::HashMap, env, fs::File, io::Write, thread};
 extern crate base64;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -14,33 +14,68 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", size);
 
     let mut total_chunk_data = "".to_owned();
-    let mut decoded_chunk_data:Vec<u8> = Vec::new();
+    let mut decoded_chunk_data: Vec<u8> = Vec::new();
 
-    loop {
-        let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
-        let resp = reqwest::blocking::get(chunks_endpoint)?.json::<HashMap<String, String>>();
-        let response = match resp {
-            Ok(t) => t,
-            Err(err) => {
-                eprintln!("{}",err);
-                break
-            }
-        };
-        let chunks = &response.get("chunk").unwrap()[..];
-        let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD)?;
+    let difference = 262144;
 
-        decoded_chunk_data = [decoded_chunk_data, buff].concat();
+    let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
+    let resp = reqwest::blocking::get(chunks_endpoint)?.json::<HashMap<String, String>>()?;
 
-        offset = offset - size + 1;
+    let chunks = &resp.get("chunk").unwrap()[..];
+    let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD)?;
+    let total_calls = (size - buff.len())/difference;
+    println!("{}", total_calls);
+    offset = offset - buff.len() + 1;
 
-        total_chunk_data.push_str(chunks);
-        println!("{}", decoded_chunk_data.len());
-
-
-        if decoded_chunk_data.len() >= size {
-            break;
+    let thread1 = thread::spawn(move || {
+        let mut decoded_chunk_data: Vec<u8> = Vec::new();
+        let end = total_calls/2;
+        for i in 0..end {
+            println!("thread1: {}", offset);
+            let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
+            let resp = reqwest::blocking::get(chunks_endpoint).unwrap().json::<HashMap<String, String>>();
+            let response = match resp {
+                Ok(t) => t,
+                Err(err) => {
+                    eprintln!("thread1: {}", err);
+                    continue;
+                }
+            };
+            let chunks = &response.get("chunk").unwrap()[..];
+            let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD).unwrap();
+            offset = offset - buff.len() + 1;
+            decoded_chunk_data = [decoded_chunk_data, buff].concat();
         }
-    }
+        decoded_chunk_data
+    });
+
+    let thread2 = thread::spawn(move || {
+        let mut decoded_chunk_data: Vec<u8> = Vec::new();
+        let start = total_calls/2;
+        offset = offset - (difference-1)*start;
+        for i in start..(total_calls+1) {
+            println!("thread2: {}", offset);
+            let chunks_endpoint = format!("https://arweave.net/chunk/{}", offset);
+            let resp = reqwest::blocking::get(chunks_endpoint).unwrap().json::<HashMap<String, String>>();
+            let response = match resp {
+                Ok(t) => t,
+                Err(err) => {
+                    eprintln!("thread2: {}", err);
+                    continue;
+                }
+            };
+            let chunks = &response.get("chunk").unwrap()[..];
+            let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD).unwrap();
+            offset = offset - buff.len() + 1;
+            decoded_chunk_data = [decoded_chunk_data, buff].concat();
+        }
+        decoded_chunk_data
+    });
+
+    let thread1_data = thread1.join().expect("thread panicked");
+    let thread2_data = thread2.join().expect("thread panicked");
+
+    decoded_chunk_data = [decoded_chunk_data,buff, thread1_data, thread2_data].concat();
 
     println!("{}", decoded_chunk_data.len());
 
