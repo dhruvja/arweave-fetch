@@ -30,11 +30,12 @@ pub fn get_first_chunk(offset: usize) -> Vec<u8> {
     buff
 }
 
-pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data: Vec<u8>) -> Vec<u8> {
-    let total_threads = 27; 
-
+pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data: Vec<u8>, total_threads: usize) -> Vec<u8> {
+    // Will store the information returned from different threads
     let mut handles = Vec::new();
 
+    // This value gets decreased gradually until it reaches 0
+    // This is used to split the values almost equally between all the threads
     let mut current_calls = total_calls;
 
     let mut end = 0;
@@ -49,7 +50,6 @@ pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data:
             if id == (total_threads - 1) {
                 end = total_calls + 1;
             }
-            // println!("thread{id}: {start} {end} {current_calls}");
             offset = offset - (DIFFERENCE-1)*start;
             for _i in start..end {
                 let buff = fetch_chunks(offset, (id+1).try_into().unwrap());
@@ -62,6 +62,7 @@ pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data:
     }
 
     for handle in handles{
+        // In this method, we wait for the threads to complete the process and data returned is stored in the variable
         let data = handle.join().unwrap();
         decoded_chunk_data = [decoded_chunk_data, data].concat();
     }
@@ -72,6 +73,7 @@ pub fn get_chunks(mut offset: usize, total_calls: usize, mut decoded_chunk_data:
 pub async fn fetch_chunks(offset: usize, id: u8) -> Vec<u8> {
     println!("thread{id}: {offset}");
     let chunks_endpoint = format!("{}chunk/{}",url, offset);
+    // This is a non blocking asynchronous http request
     let resp = reqwest::get(chunks_endpoint).await.unwrap().json::<HashMap<String, String>>().await;
     let response = match resp {
         Ok(t) => t,
