@@ -14,30 +14,21 @@ pub fn get_args(args: &[String]) -> (&str, &str) {
 
 pub fn get_size_and_offset(tx_id: &str) -> (usize, usize) {
     let offset_endpoint = format!("{}tx/{}/offset",url, tx_id);
-    println!("{}", offset_endpoint);
     let resp = reqwest::blocking::get(offset_endpoint).unwrap().json::<HashMap<String, String>>().unwrap();
     let size = resp.get("size").unwrap().parse::<usize>().unwrap();
     let offset = resp.get("offset").unwrap().parse::<usize>().unwrap();
     (size, offset)
 }
 
-pub fn get_first_chunk(offset: usize) -> Vec<u8> {
-    let chunks_endpoint = format!("{}chunk/{}",url, offset);
-    let resp = reqwest::blocking::get(chunks_endpoint).unwrap().json::<HashMap<String, String>>().unwrap();
 
-    let chunks = &resp.get("chunk").unwrap()[..];
-    let buff = base64::decode_config(chunks, base64::URL_SAFE_NO_PAD).unwrap();
-    buff
-}
-
-pub fn get_chunks(mut offset: usize, total_calls: usize, total_threads: usize) -> Vec<u8> {
+pub fn get_chunks(mut offset: usize, total_chunks: usize, total_threads: usize) -> Vec<u8> {
     // Will store the information returned from different threads
     let mut handles = Vec::new();
     let mut decoded_chunk_data = Vec::new();
 
     // This value gets decreased gradually until it reaches 0
     // This is used to split the values almost equally between all the threads
-    let mut current_calls = total_calls;
+    let mut current_calls = total_chunks;
 
     let mut end = 0;
 
@@ -49,12 +40,12 @@ pub fn get_chunks(mut offset: usize, total_calls: usize, total_threads: usize) -
         let handle = thread::spawn(move || {
             let mut decoded_chunk_data: Vec<u8> = Vec::new();
             if id == (total_threads - 1) {
-                end = total_calls + 1;
+                end = total_chunks + 1;
             }
-            offset = offset - (DIFFERENCE-1)*start;
+            offset = offset + (DIFFERENCE)*start;
             for _i in start..end {
                 let buff = fetch_chunks(offset, (id+1).try_into().unwrap());
-                offset = offset - buff.len() + 1;
+                offset = offset + buff.len();
                 decoded_chunk_data = [decoded_chunk_data, buff].concat();
             }
             decoded_chunk_data 
