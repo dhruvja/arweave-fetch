@@ -6,7 +6,7 @@ This is a simple program where the data is fetched from arweave in chunks if the
 
 First the offset and size of the tx is fetched at `https://arweave.net/tx/{tx_id}/offset`.
 Then the chunks are fetched at `https://arweave.net/chunk/{offset}`
-The offset is subtracted by the size of the chunk and is continued until the last chunk is obtained.
+The offset is subtracted by the size of the complete file and the chunks are obtained by adding the size of each chunk to the offset until the last chunk is obtained.
 
 ## Run the program
 
