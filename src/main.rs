@@ -1,12 +1,14 @@
 use arweave_fetch::{get_args, get_chunks, get_size_and_offset};
-use std::{env, fs::File, io::Write};
+use std::{env, fs::File, io::Write,process};
 
 const DIFFERENCE: usize = 262144; // 256Kb in bytes
 const THREADS: usize = 20; // Number of threads for parallel processing
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-    let (tx_id, file_name) = get_args(&args);
-    let (size, mut offset) = get_size_and_offset(tx_id);
+    let (tx_id, file_name) = get_args(env::args()).unwrap_or_else(|err| {
+        eprintln!("The progam failed with {}", err);
+        process::exit(1)
+    });
+    let (size, mut offset) = get_size_and_offset(&tx_id);
     println!("{}", size);
 
     let last_byte_offset = offset.clone();
